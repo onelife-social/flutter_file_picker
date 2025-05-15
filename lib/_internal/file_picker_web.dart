@@ -56,7 +56,7 @@ class FilePickerWeb extends FilePicker {
           'You are setting a type [$type]. Custom extension filters are only allowed with FileType.custom, please change it or remove filters.');
     }*/
 
-    final Completer<List<PlatformFile>?> filesCompleter = Completer<List<PlatformFile>?>();
+    Completer<List<PlatformFile>?>? filesCompleter = Completer<List<PlatformFile>?>();
 
     String accept = _fileType(type, allowedExtensions);
     HTMLInputElement uploadInput = HTMLInputElement();
@@ -105,7 +105,7 @@ class FilePickerWeb extends FilePicker {
           if (onFileLoading != null) {
             onFileLoading(FilePickerStatus.done);
           }
-          filesCompleter.complete(pickedFiles);
+          filesCompleter?.complete(pickedFiles);
         }
       }
 
@@ -153,7 +153,7 @@ class FilePickerWeb extends FilePicker {
       Future.delayed(Duration(seconds: 1)).then((value) {
         if (!changeEventTriggered) {
           changeEventTriggered = true;
-          filesCompleter.complete(null);
+          filesCompleter?.complete(null);
         }
       });
     }
@@ -181,6 +181,7 @@ class FilePickerWeb extends FilePicker {
     }
 
     final List<PlatformFile>? files = await filesCompleter.future;
+    filesCompleter = null;
 
     return files == null ? null : FilePickerResult(files);
   }
