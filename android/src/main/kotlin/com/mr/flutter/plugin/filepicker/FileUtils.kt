@@ -135,38 +135,21 @@ object FileUtils {
         if (type == "dir") {
             intent = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE)
         } else {
-            if (type == "image/*") {
-                intent = Intent(Intent.ACTION_PICK)
-                val uri = (Environment.getExternalStorageDirectory().path + File.separator).toUri()
-                intent.setDataAndType(uri, type)
-                intent.type = this.type
-                intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, this.isMultipleSelection)
-                intent.putExtra("multi-pick", this.isMultipleSelection)
+            intent = Intent(Intent.ACTION_PICK)
+            val uri = (Environment.getExternalStorageDirectory().path + File.separator).toUri()
+            intent.setDataAndType(uri, type)
+            intent.type = this.type
+            intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, this.isMultipleSelection)
+            intent.putExtra("multi-pick", this.isMultipleSelection)
 
-                type?.takeIf { it.contains(",") }
-                    ?.split(",")
-                    ?.filter { it.isNotEmpty() }
-                    ?.let { allowedExtensions = ArrayList(it) }
+            type?.takeIf { it.contains(",") }
+                ?.split(",")
+                ?.filter { it.isNotEmpty() }
+                ?.let { allowedExtensions = ArrayList(it) }
 
-                if (allowedExtensions != null) {
-                    intent.putExtra(Intent.EXTRA_MIME_TYPES, allowedExtensions)
-                }
-            } else {
-                intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
-                    addCategory(Intent.CATEGORY_OPENABLE)
-                    type = this@startFileExplorer.type
-                    putExtra(Intent.EXTRA_ALLOW_MULTIPLE, isMultipleSelection)
-                    putExtra("multi-pick", isMultipleSelection)
-
-                    allowedExtensions?.let {
-                        putExtra(Intent.EXTRA_MIME_TYPES, it.toTypedArray())
-                    }
-                }
-
+            if (allowedExtensions != null) {
+                intent.putExtra(Intent.EXTRA_MIME_TYPES, allowedExtensions)
             }
-
-
-
         }
         if (intent.resolveActivity(activity.packageManager) != null) {
             activity.startActivityForResult(intent, REQUEST_CODE)
@@ -458,6 +441,20 @@ object FileUtils {
 
         val file = File(path)
 
+        // --- Get lastModified from SAF (Storage Access Framework) if available ---
+        var fileTime: Long = 0L
+        try {
+            val cursor = context.contentResolver.query(uri, null, null, null, null)
+            cursor?.use {
+                val columnIndex = it.getColumnIndex(DocumentsContract.Document.COLUMN_LAST_MODIFIED)
+                if (columnIndex != -1 && it.moveToFirst()) {
+                    fileTime = it.getLong(columnIndex)
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error getting SAF file time", e)
+        }
+
         if (!file.exists()) {
             try {
                 file.parentFile?.mkdirs()
@@ -483,6 +480,14 @@ object FileUtils {
                     fileInputStream?.close()
                 } catch (ex: IOException) {
                     Log.e(TAG, "Failed to close file streams: " + ex.message, ex)
+                }
+            }
+            
+            // --- Set lastModified on the file if we successfully retrieved it ---
+            if (fileTime != 0L && file.exists()) {
+                val success = file.setLastModified(fileTime)
+                if (!success) {
+                    Log.w(TAG, "Failed to set last modified time for file: ${file.absolutePath}")
                 }
             }
         }
