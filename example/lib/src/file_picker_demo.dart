@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:file/local.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
@@ -7,8 +5,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 class FilePickerDemo extends StatefulWidget {
+  const FilePickerDemo({super.key});
+
   @override
-  _FilePickerDemoState createState() => _FilePickerDemoState();
+  State<FilePickerDemo> createState() => _FilePickerDemoState();
 }
 
 class _FilePickerDemoState extends State<FilePickerDemo> {
@@ -36,7 +36,7 @@ class _FilePickerDemoState extends State<FilePickerDemo> {
                 Icons.error_outline,
               ),
               contentPadding: EdgeInsets.symmetric(vertical: 40.0),
-              title: const Text('No action taken yet'),
+              title: Text('No action taken yet'),
               subtitle: Text(
                 'Please use on one of the buttons above to get started',
                 style: TextStyle(
@@ -54,8 +54,7 @@ class _FilePickerDemoState extends State<FilePickerDemo> {
   @override
   void initState() {
     super.initState();
-    _fileExtensionController
-        .addListener(() => _extension = _fileExtensionController.text);
+    _fileExtensionController.addListener(() => _extension = _fileExtensionController.text);
   }
 
   Widget _buildFilePickerResultsWidget({
@@ -80,10 +79,9 @@ class _FilePickerDemoState extends State<FilePickerDemo> {
       pickedFiles = (await FilePicker.platform.pickFiles(
         type: _pickingType,
         allowMultiple: _multiPick,
-        onFileLoading: (FilePickerStatus status) => print(status),
-        allowedExtensions: (_extension?.isNotEmpty ?? false)
-            ? _extension?.replaceAll(' ', '').split(',')
-            : null,
+        onFileLoading: (FilePickerStatus status) => printInDebug(status),
+        allowedExtensions:
+            (_extension?.isNotEmpty ?? false) ? _extension?.replaceAll(' ', '').split(',') : null,
         dialogTitle: _dialogTitleController.text,
         initialDirectory: _initialDirectoryController.text,
         lockParentWindow: _lockParentWindow,
@@ -92,7 +90,7 @@ class _FilePickerDemoState extends State<FilePickerDemo> {
           ?.files;
       hasUserAborted = pickedFiles == null;
     } on PlatformException catch (e) {
-      _logException('Unsupported operation' + e.toString());
+      _logException('Unsupported operation: $e');
     } catch (e) {
       _logException(e.toString());
     }
@@ -104,8 +102,7 @@ class _FilePickerDemoState extends State<FilePickerDemo> {
       _resultsWidget = _buildFilePickerResultsWidget(
         itemCount: pickedFiles?.length ?? 0,
         itemBuilder: (BuildContext context, int index) {
-          final path =
-              pickedFiles!.map((e) => e.path).toList()[index].toString();
+          final path = pickedFiles!.map((e) => e.path).toList()[index].toString();
           return ListTile(
             leading: Text(
               index.toString(),
@@ -125,17 +122,15 @@ class _FilePickerDemoState extends State<FilePickerDemo> {
     _resetState();
 
     try {
-      pickedFilesAndDirectories =
-          await FilePicker.platform.pickFileAndDirectoryPaths(
+      pickedFilesAndDirectories = await FilePicker.platform.pickFileAndDirectoryPaths(
         type: _pickingType,
-        allowedExtensions: (_extension?.isNotEmpty ?? false)
-            ? _extension?.replaceAll(' ', '').split(',')
-            : null,
+        allowedExtensions:
+            (_extension?.isNotEmpty ?? false) ? _extension?.replaceAll(' ', '').split(',') : null,
         initialDirectory: _initialDirectoryController.text,
       );
       hasUserAborted = pickedFilesAndDirectories == null;
     } on PlatformException catch (e) {
-      _logException('Unsupported operation' + e.toString());
+      _logException('Unsupported operation: $e');
     } catch (e) {
       _logException(e.toString());
     }
@@ -150,9 +145,8 @@ class _FilePickerDemoState extends State<FilePickerDemo> {
           String name = 'File path:';
           if (!kIsWeb) {
             final fs = LocalFileSystem();
-            name = fs.isFileSync(pickedFilesAndDirectories![index])
-                ? 'File path:'
-                : 'Directory path:';
+            name =
+                fs.isFileSync(pickedFilesAndDirectories![index]) ? 'File path:' : 'Directory path:';
           }
           return ListTile(
             leading: Text(
@@ -175,9 +169,7 @@ class _FilePickerDemoState extends State<FilePickerDemo> {
       _scaffoldMessengerKey.currentState?.showSnackBar(
         SnackBar(
           content: Text(
-            (result!
-                ? 'Temporary files removed with success.'
-                : 'Failed to clean temporary files'),
+            (result! ? 'Temporary files removed with success.' : 'Failed to clean temporary files'),
             style: const TextStyle(
               color: Colors.white,
             ),
@@ -185,7 +177,7 @@ class _FilePickerDemoState extends State<FilePickerDemo> {
         ),
       );
     } on PlatformException catch (e) {
-      _logException('Unsupported operation' + e.toString());
+      _logException('Unsupported operation: $e');
     } catch (e) {
       _logException(e.toString());
     }
@@ -207,7 +199,7 @@ class _FilePickerDemoState extends State<FilePickerDemo> {
       );
       hasUserAborted = pickedDirectoryPath == null;
     } on PlatformException catch (e) {
-      _logException('Unsupported operation' + e.toString());
+      _logException('Unsupported operation: $e');
     } catch (e) {
       _logException(e.toString());
     }
@@ -235,9 +227,8 @@ class _FilePickerDemoState extends State<FilePickerDemo> {
 
     try {
       pickedSaveFilePath = await FilePicker.platform.saveFile(
-        allowedExtensions: (_extension?.isNotEmpty ?? false)
-            ? _extension?.replaceAll(' ', '').split(',')
-            : null,
+        allowedExtensions:
+            (_extension?.isNotEmpty ?? false) ? _extension?.replaceAll(' ', '').split(',') : null,
         type: FileType.custom,
         dialogTitle: _dialogTitleController.text,
         fileName: _defaultFileNameController.text,
@@ -247,7 +238,7 @@ class _FilePickerDemoState extends State<FilePickerDemo> {
       );
       hasUserAborted = pickedSaveFilePath == null;
     } on PlatformException catch (e) {
-      _logException('Unsupported operation' + e.toString());
+      _logException('Unsupported operation: $e');
     } catch (e) {
       _logException(e.toString());
     }
@@ -269,7 +260,7 @@ class _FilePickerDemoState extends State<FilePickerDemo> {
   }
 
   void _logException(String message) {
-    print(message);
+    printInDebug(message);
     _scaffoldMessengerKey.currentState?.hideCurrentSnackBar();
     _scaffoldMessengerKey.currentState?.showSnackBar(
       SnackBar(
@@ -373,8 +364,8 @@ class _FilePickerDemoState extends State<FilePickerDemo> {
                         items: FileType.values
                             .map(
                               (fileType) => DropdownMenuItem<FileType>(
-                                child: Text(fileType.toString()),
                                 value: fileType,
+                                child: Text(fileType.toString()),
                               ),
                             )
                             .toList(),
@@ -423,8 +414,7 @@ class _FilePickerDemoState extends State<FilePickerDemo> {
                           'Lock parent window',
                           textAlign: TextAlign.left,
                         ),
-                        onChanged: (bool value) =>
-                            setState(() => _lockParentWindow = value),
+                        onChanged: (bool value) => setState(() => _lockParentWindow = value),
                         value: _lockParentWindow,
                       ),
                     ),
@@ -435,8 +425,7 @@ class _FilePickerDemoState extends State<FilePickerDemo> {
                           'Pick multiple files',
                           textAlign: TextAlign.left,
                         ),
-                        onChanged: (bool value) =>
-                            setState(() => _multiPick = value),
+                        onChanged: (bool value) => setState(() => _multiPick = value),
                         value: _multiPick,
                       ),
                     ),
@@ -569,4 +558,6 @@ class _FilePickerDemoState extends State<FilePickerDemo> {
       ),
     );
   }
+
+  void printInDebug(Object object) => debugPrint(object.toString());
 }
