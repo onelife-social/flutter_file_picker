@@ -11,6 +11,7 @@ import android.os.Bundle
 import android.os.Environment
 import android.os.Parcelable
 import android.provider.DocumentsContract
+import android.provider.MediaStore
 import android.provider.OpenableColumns
 import android.util.Log
 import android.webkit.MimeTypeMap
@@ -40,6 +41,7 @@ import java.util.Locale
 
 object FileUtils {
     private const val TAG = "FilePickerUtils"
+    private const val ANDROID_17_API_LEVEL = 37
 
     fun FilePickerDelegate.processFiles(
         activity: Activity,
@@ -124,6 +126,30 @@ object FileUtils {
         }
     }
 
+    // Android 17's system contacts picker wins ACTION_PICK for */* at priority 101, then rejects
+    // that type and returns RESULT_CANCELED, so no picker is ever usable through that intent.
+    private fun FilePickerDelegate.anyTypeIntentForAndroid17(): Intent {
+        val mimeTypes = allowedExtensions?.filterNotNull()?.distinct()?.toTypedArray()
+        val isMediaOnly = !mimeTypes.isNullOrEmpty() &&
+            mimeTypes.all { it.startsWith("image/") || it.startsWith("video/") }
+
+        if (isMediaOnly) {
+            return Intent(MediaStore.ACTION_PICK_IMAGES).apply {
+                putExtra(Intent.EXTRA_MIME_TYPES, mimeTypes)
+                if (isMultipleSelection) {
+                    putExtra(MediaStore.EXTRA_PICK_IMAGES_MAX, MediaStore.getPickImagesMaxLimit())
+                }
+            }
+        }
+
+        return Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+            addCategory(Intent.CATEGORY_OPENABLE)
+            setType("*/*")
+            putExtra(Intent.EXTRA_ALLOW_MULTIPLE, isMultipleSelection)
+            mimeTypes?.let { putExtra(Intent.EXTRA_MIME_TYPES, it) }
+        }
+    }
+
     fun FilePickerDelegate.startFileExplorer() {
         val intent: Intent
 
@@ -134,6 +160,8 @@ object FileUtils {
 
         if (type == "dir") {
             intent = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE)
+        } else if (type == "*/*" && Build.VERSION.SDK_INT >= ANDROID_17_API_LEVEL) {
+            intent = anyTypeIntentForAndroid17()
         } else {
             intent = Intent(Intent.ACTION_PICK)
             val uri = (Environment.getExternalStorageDirectory().path + File.separator).toUri()
@@ -446,7 +474,10 @@ object FileUtils {
         try {
             val cursor = context.contentResolver.query(uri, null, null, null, null)
             cursor?.use {
-                val columnIndex = it.getColumnIndex(DocumentsContract.Document.COLUMN_LAST_MODIFIED)
+                var columnIndex = it.getColumnIndex(DocumentsContract.Document.COLUMN_LAST_MODIFIED)
+                if (columnIndex == -1 && Build.VERSION.SDK_INT >= ANDROID_17_API_LEVEL) {
+                    columnIndex = it.getColumnIndex(MediaStore.MediaColumns.DATE_TAKEN)
+                }
                 if (columnIndex != -1 && it.moveToFirst()) {
                     fileTime = it.getLong(columnIndex)
                 }
@@ -484,7 +515,7 @@ object FileUtils {
             }
             
             // --- Set lastModified on the file if we successfully retrieved it ---
-            if (fileTime != 0L && file.exists()) {
+            if (fileTime > 0L && file.exists()) {
                 val success = file.setLastModified(fileTime)
                 if (!success) {
                     Log.w(TAG, "Failed to set last modified time for file: ${file.absolutePath}")
